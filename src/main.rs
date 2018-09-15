@@ -1,10 +1,10 @@
 extern crate rand;
+extern crate docopt;
 extern crate secp256k1;
+extern crate rustc_hex;
+extern crate threadpool;
 extern crate tiny_keccak;
 extern crate ethereum_types;
-extern crate rustc_hex;
-extern crate docopt;
-extern crate threadpool;
 
 use std::sync;
 use docopt::Docopt;
@@ -15,6 +15,10 @@ use secp256k1::{Secp256k1, Message, key};
 use ethereum_types::{Address, Public, Secret};
 
 /*
+ * TODO: Can I compose/pipe in Rust?
+ * TODO: Can I call funcs. first class WITH args?
+ * TODO: Can I curry functions?
+ *
  * The goal is to generate a private key (with 4 0's maybe?) and then seal 
  * that in the enclave, after first reporting out the enclave what the 
  * public key & derived ethereum address is.
@@ -48,13 +52,9 @@ assert!(secp.verify(&message, &sig, &public_key).is_ok());
 */
 
 fn main() {
-    let private_key = generate_random_priv_key();
-    let public_key = get_public_key_from_secret(private_key);
-    let addr = private_key_to_eth_addr(private_key);
-    println!("{:?}\n{:?}\nAddress({:?})", private_key, public_key, addr);
-    let vanity_priv = generate_vanity_priv_key("00");
-    let vanity_addr = private_key_to_eth_addr(vanity_priv);
-    println!("{:?}\n{:?}", vanity_priv, vanity_addr);
+    let thread_priv = generate_vanity_priv_key_threaded("00");
+    let thread_addr = private_key_to_eth_addr(thread_priv);
+    println!("{:?}\n{:?}", thread_priv, thread_addr);
 }
 
 pub fn generate_oraclize_address() -> key::SecretKey {
@@ -62,27 +62,16 @@ pub fn generate_oraclize_address() -> key::SecretKey {
 }
 
 pub fn generate_vanity_priv_key(prefix: &str) -> key::SecretKey {
-    let pref = prefix.from_hex().expect("Something???");
-    println!("Pref: {:?}", pref);
-    let x = generate_random_priv_key();
-    if starts_with_prefix(x, pref) {
-        println!("Starts with prefix!");
-        x
+    let priv_key = generate_random_priv_key();
+    if starts_with_prefix(priv_key, &prefix.from_hex().expect("Error: valid hex required for prefix!")) {
+        priv_key
     } else {
-        println!("Doesn't start with prefix :(");
         generate_vanity_priv_key(prefix)
     }
 }
 
-pub fn starts_with_prefix(secret: key::SecretKey, prefix: Vec<u8>) -> bool {
-    let x = private_key_to_eth_addr(secret);
-    if x.starts_with(&prefix) {
-        println!("Starts with prefix!: {:?}", x);
-        true
-    } else {
-        println!("Doesn't start with prefix: {:?}", x);
-        false
-    }
+pub fn starts_with_prefix(secret: key::SecretKey, prefix: &Vec<u8>) -> bool {
+    private_key_to_eth_addr(secret).starts_with(&prefix)
 }
 
 pub fn private_key_to_eth_addr(secret: key::SecretKey) -> Address {
@@ -123,11 +112,8 @@ pub fn public_key_to_long_eth_addr(pub_key: key::PublicKey) -> Public {
     public.copy_from_slice(&serialized[1..65]);
     public
 }
-    
-//pub fn get_random_key_pair() -> (key::SecretKey, key::PublicKey) { 
-//    Secp256k1::new().generate_keypair(&mut OsRng::new().expect("OsRng")).expect("Failed to generate key pair!") // `expect` is sugar for match Ok/Err stuff.
-//}
 
+// TODO: implement a version that will hash longer input.
 pub trait Keccak256<T> {
     fn keccak256(&self) -> T where T: Sized;      // Takes any type that implements the 'Sized' typeclass.
 }
@@ -146,3 +132,23 @@ impl Keccak256<[u8; 32]> for [u8] {               // Takes arr of length 32 & ty
         result
     }
 }
+
+fn generate_vanity_priv_key_threaded(prefix: &'static str) -> key::SecretKey {
+    let pool = threadpool::Builder::new().build();
+    let (tx, rx) = sync::mpsc::sync_channel(1);
+    for _ in 0..pool.max_count() {
+        let tx = tx.clone();
+        pool.execute(move || {
+            let pref = prefix.from_hex().expect("Error: valid hex required for prefix!");
+            loop {
+                let priv_key = generate_random_priv_key();
+                if !starts_with_prefix(priv_key, &pref) {
+                    continue;
+                }
+                tx.send(priv_key).expect("Error sending private key from thread.");
+            }
+        });
+    };
+    rx.recv().expect("No fitting private key found!")
+}
+
