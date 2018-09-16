@@ -69,15 +69,21 @@ fn main() {
     let thread_addr = private_key_to_eth_addr(thread_priv);
     println!("{:?}\n{:?}", thread_priv, thread_addr);
     */
-    match generate_random_priv_key_result()
-        .map(log_monad_contents)
-        .and_then(get_public_key_from_secret_result) // and_then == chain/bind
-        .map(log_monad_contents)
-        .map(public_key_to_long_eth_addr) // TODO: combine?
-        .map(public_key_to_address_result) {
-            Ok(r)  => println!("[+] Ethereum Address: {:?}",r),
-            Err(e) => println!("[-] Error: {:?}",e)
-        };
+    // match generate_random_priv_key_result()
+    //     .map(log_monad_contents)
+    //     .and_then(get_public_key_from_secret_result) // and_then == chain/bind
+    //     .map(log_monad_contents)
+    //     .map(public_key_to_long_eth_addr) // TODO: combine?
+    //     .map(public_key_to_address_result) {
+    //         Ok(r)  => println!("[+] Ethereum Address: {:?}",r),
+    //         Err(e) => println!("[-] Error: {:?}",e)
+    //     };
+
+    match generate_vanity_priv_key_threaded_result("00") {
+        Ok(r)  => println!("[+] Ethereum Address: {:?}", r),
+        Err(e) => println!("[-] Error: {}",e)
+    };
+
 }
 
 //pub fn generate_key_set() -> Ethereum_Key_Set {
@@ -197,3 +203,21 @@ fn generate_vanity_priv_key_threaded(prefix: &'static str) -> key::SecretKey {
     rx.recv().expect("No fitting private key found!")
 }
 
+fn generate_vanity_priv_key_threaded_result(prefix: &'static str) -> Result<key::SecretKey, std::sync::mpsc::RecvError> {
+    let pool = threadpool::Builder::new().build();
+    let (tx, rx) = sync::mpsc::sync_channel(1);
+    for _ in 0..pool.max_count() {
+        let tx = tx.clone();
+        pool.execute(move || {
+            let pref = prefix.from_hex().expect("Error: valid hex required for prefix!");
+            loop {
+                let priv_key = generate_random_priv_key();
+                if !starts_with_prefix(priv_key, &pref) {
+                    continue;
+                }
+                tx.send(priv_key).expect("Error sending private key from thread.");
+            }
+        });
+    };
+    rx.recv()
+}
