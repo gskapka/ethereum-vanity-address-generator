@@ -11,18 +11,17 @@ use std::sync;
 //use docopt::Docopt;
 use rustc_hex::FromHex;
 use tiny_keccak::Keccak;
-use rand::{OsRng, Rng, thread_rng};
-use secp256k1::{Secp256k1, Message, Error, key};
-use ethereum_types::{Address, Public, Secret};
+use rand::{Rng, thread_rng};
+use secp256k1::{Secp256k1, Error};
+use ethereum_types::{Address, Public};
+use secp256k1::key::{SecretKey, PublicKey};
 
 /*
- * TODO: Import public & private from key to stop using key:: everywhere!
- * TODO: Switch to using result and make compositions with that!!
- * TODO: Can I compose/pipe in Rust?
- * TODO: Can I call funcs. first class WITH args?
- * TODO: Can I curry functions?
+ *
+ * TODO: Can I compose/pipe in Rust? - Yes, implement.
+ * TODO: Can I call funcs. first class WITH args? - Only via closures :( Ugly
+ * TODO: Can I curry functions? - See above
  * TODO: Make a new type to hold the key structure plus derivation logic.
- * TODO: Rm the result suffixes
  *
  * The goal is to generate a private key (with 4 0's maybe?) and then seal 
  * that in the enclave, after first reporting out the enclave what the 
@@ -56,48 +55,38 @@ let sig = secp.sign(&message, &secret_key);
 assert!(secp.verify(&message, &sig, &public_key).is_ok());
 */
 
-fn log_monad_contents<T>(monad: T) -> T 
+fn log_monad_contents<T>(m: T) -> T 
     where T: std::fmt::Debug
 {
-    println!("[+] {:?}", monad);
-    monad
+    println!("{:?}", m);
+    m
 }
 
 fn main() {
-    /*
-    let thread_priv = generate_vanity_priv_key_threaded("00");
-    let thread_addr = private_key_to_eth_addr(thread_priv);
-    println!("{:?}\n{:?}", thread_priv, thread_addr);
-    */
-    // match generate_random_priv_key_result()
-    //     .map(log_monad_contents)
-    //     .and_then(get_public_key_from_secret_result) // and_then == chain/bind
-    //     .map(log_monad_contents)
-    //     .map(public_key_to_long_eth_addr) // TODO: combine?
-    //     .map(public_key_to_address_result) {
-    //         Ok(r)  => println!("[+] Ethereum Address: {:?}",r),
-    //         Err(e) => println!("[-] Error: {:?}",e)
-    //     };
-
-    match generate_vanity_priv_key_threaded_result("00") {
+    match generate_vanity_priv_key_threaded_result("00") { // Note, using result thusly is NOT lazy!
         Ok(r)  => println!("[+] Ethereum Address: {:?}", r),
         Err(e) => println!("[-] Error: {}",e)
     };
-
 }
 
-//pub fn generate_key_set() -> Ethereum_Key_Set {
+pub fn generate_key_set() -> Result<Address, Error> {//Ethereum_Key_Set {
     // TODO: use above pipeline and create the struct to make this func work!
     // TODO: create a formatter to print the struct contents
     // TODO: create a getter for the individual keys
-    // TOOD: Implement something that returns this struct in the vanity stuff!
-//}
+    // TODO: Implement something that returns this struct in the vanity stuff!
+    generate_random_priv_key_result()
+        .map(log_monad_contents)
+        .and_then(get_public_key_from_secret_result) // and_then == chain/bind
+        .map(log_monad_contents)
+        .map(public_key_to_long_eth_addr) // TODO: combine?
+        .map(public_key_to_address_result)
+}
 
-pub fn generate_oraclize_address() -> key::SecretKey {
+pub fn generate_oraclize_address() -> SecretKey {
     generate_vanity_priv_key("0000")
 }
 
-pub fn generate_vanity_priv_key(prefix: &str) -> key::SecretKey {
+pub fn generate_vanity_priv_key(prefix: &str) -> SecretKey {
     let priv_key = generate_random_priv_key();
     if starts_with_prefix(priv_key, &prefix.from_hex().expect("Error: valid hex required for prefix!")) {
         priv_key
@@ -106,21 +95,21 @@ pub fn generate_vanity_priv_key(prefix: &str) -> key::SecretKey {
     }
 }
 
-pub fn starts_with_prefix(secret: key::SecretKey, prefix: &Vec<u8>) -> bool {
+pub fn starts_with_prefix(secret: SecretKey, prefix: &Vec<u8>) -> bool {
     private_key_to_eth_addr(secret).starts_with(&prefix)
 }
 
-pub fn private_key_to_eth_addr(secret: key::SecretKey) -> Address {
+pub fn private_key_to_eth_addr(secret: SecretKey) -> Address {
     public_key_to_address(&public_key_to_long_eth_addr(get_public_key_from_secret(secret))) // TODO: compose!!
 }
 
 
-pub fn generate_random_priv_key() -> key::SecretKey {
-    key::SecretKey::from_slice(&Secp256k1::new(), &get_32_random_bytes_arr()).expect("Failed to generate secret key")
+pub fn generate_random_priv_key() -> SecretKey {
+    SecretKey::from_slice(&Secp256k1::new(), &get_32_random_bytes_arr()).expect("Failed to generate secret key")
 }
 
-pub fn generate_random_priv_key_result() -> Result<key::SecretKey, Error> {
-    key::SecretKey::from_slice(&Secp256k1::new(), &get_32_random_bytes_arr())
+pub fn generate_random_priv_key_result() -> Result<SecretKey, Error> {
+    SecretKey::from_slice(&Secp256k1::new(), &get_32_random_bytes_arr())
 }
 
 pub fn get_32_random_bytes_arr() -> [u8;32] {
@@ -134,12 +123,12 @@ pub fn get_x_random_bytes_vec(len: usize) -> Vec<u8> {
     thread_rng().fill_bytes(&mut x);
     x
 }
-pub fn get_public_key_from_secret(secret_key: key::SecretKey) -> key::PublicKey {
-    key::PublicKey::from_secret_key(&Secp256k1::new(), &secret_key).expect("Failed to derive public key!")
+pub fn get_public_key_from_secret(secret_key: SecretKey) -> PublicKey {
+    PublicKey::from_secret_key(&Secp256k1::new(), &secret_key).expect("Failed to derive public key!")
 }
 
-pub fn get_public_key_from_secret_result(secret_key: key::SecretKey) -> Result<key::PublicKey, Error> {
-    key::PublicKey::from_secret_key(&Secp256k1::new(), &secret_key)
+pub fn get_public_key_from_secret_result(secret_key: SecretKey) -> Result<PublicKey, Error> {
+    PublicKey::from_secret_key(&Secp256k1::new(), &secret_key)
 }
 
 pub fn public_key_to_address(public: &Public) -> Address {
@@ -156,7 +145,7 @@ pub fn public_key_to_address_result(public: Public) -> Address {
     result
 }
 
-pub fn public_key_to_long_eth_addr(pub_key: key::PublicKey) -> Public {
+pub fn public_key_to_long_eth_addr(pub_key: PublicKey) -> Public {
     let context = secp256k1::Secp256k1::new();
     let serialized = pub_key.serialize_vec(&context, false);
     let mut public = Public::default();
@@ -184,7 +173,7 @@ impl Keccak256<[u8; 32]> for [u8] {               // Takes arr of length 32 & ty
     }
 }
 
-fn generate_vanity_priv_key_threaded(prefix: &'static str) -> key::SecretKey {
+fn generate_vanity_priv_key_threaded(prefix: &'static str) -> SecretKey {
     let pool = threadpool::Builder::new().build();
     let (tx, rx) = sync::mpsc::sync_channel(1);
     for _ in 0..pool.max_count() {
@@ -203,7 +192,7 @@ fn generate_vanity_priv_key_threaded(prefix: &'static str) -> key::SecretKey {
     rx.recv().expect("No fitting private key found!")
 }
 
-fn generate_vanity_priv_key_threaded_result(prefix: &'static str) -> Result<key::SecretKey, std::sync::mpsc::RecvError> {
+fn generate_vanity_priv_key_threaded_result(prefix: &'static str) -> Result<SecretKey, std::sync::mpsc::RecvError> {
     let pool = threadpool::Builder::new().build();
     let (tx, rx) = sync::mpsc::sync_channel(1);
     for _ in 0..pool.max_count() {
