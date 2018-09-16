@@ -7,11 +7,10 @@ extern crate tiny_keccak;
 extern crate ethereum_types;
 
 use std::sync;
-//use std::result;
 //use docopt::Docopt;
+use rand::thread_rng;
 use rustc_hex::FromHex;
 use tiny_keccak::Keccak;
-use rand::{Rng, thread_rng};
 use secp256k1::{Secp256k1, Error};
 use ethereum_types::{Address, Public};
 use secp256k1::key::{SecretKey, PublicKey};
@@ -64,8 +63,8 @@ fn log_monad_contents<T>(m: T) -> T
 
 fn main() {
     match generate_vanity_priv_key_threaded_result("00") { // Note, using result thusly is NOT lazy!
-        Ok(r)  => println!("[+] Ethereum Address: {:?}", r),
-        Err(e) => println!("[-] Error: {}",e)
+        Ok(r)  => println!("Ethereum Address: {:?}", r),
+        Err(e) => println!("Error: {}",e)
     };
 }
 
