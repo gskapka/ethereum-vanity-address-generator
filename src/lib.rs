@@ -5,12 +5,14 @@ extern crate threadpool;
 extern crate tiny_keccak;
 extern crate ethereum_types;
 
+mod utils;
 mod macros;
 
 use rustc_hex::FromHex;
 use tiny_keccak::Keccak;
 use secp256k1::Secp256k1;
 use rand::{Rng, thread_rng};
+use utils::log_monad_contents;
 use std::sync::mpsc::sync_channel;
 use secp256k1::Error as SecpError;
 use ethereum_types::{Address, Public};
@@ -57,13 +59,6 @@ let message = Message::from_slice(&[0xab; 32]).expect("32 bytes");
 let sig = secp.sign(&message, &secret_key);
 assert!(secp.verify(&message, &sig, &public_key).is_ok());
 */
-
-fn log_monad_contents<T>(m: T) -> T 
-    where T: std::fmt::Debug
-{
-    println!("{:?}", m);
-    m
-}
 
 fn generate_key_set() -> Result<Address, SecpError> {//Ethereum_Key_Set {
     // TODO: use above pipeline and create the struct to make this func work!
