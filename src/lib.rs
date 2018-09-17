@@ -2,14 +2,14 @@ extern crate rand;
 extern crate secp256k1;
 extern crate rustc_hex;
 extern crate threadpool;
-extern crate tiny_keccak;
 extern crate ethereum_types;
 
 mod utils;
 mod macros;
+mod keccak;
 
+use keccak::Keccak256;
 use rustc_hex::FromHex;
-use tiny_keccak::Keccak;
 use secp256k1::Secp256k1;
 use rand::{Rng, thread_rng};
 use utils::log_monad_contents;
@@ -141,26 +141,6 @@ fn public_key_to_long_eth_addr(pub_key: PublicKey) -> Public {
     let mut public = Public::default();
     public.copy_from_slice(&serialized[1..65]);
     public
-}
-
-// TODO: implement a version that will hash longer input.
-trait Keccak256<T> {
-    fn keccak256(&self) -> T where T: Sized;      // Takes any type that implements the 'Sized' typeclass.
-}
-
-impl Keccak256<[u8; 32]> for [u8] {               // Takes arr of length 32 & type u8, returns [u8]
-    fn keccak256(&self) -> [u8; 32] {
-        let mut keccak = Keccak::new_keccak256(); // Get hash func. from struct in crate
-        let mut result = [0u8; 32];               // make arr. 32 long of u8 zeroes. (Sugar for 
-                                                  // `let must result [u8; 32] = [0; 32];`)
-        keccak.update(self);                      // Add self param to hash func.(Can add more using 
-                                                  // byte literals: `b" "` etc)
-                                                  // Self is the type of the current object, used
-                                                  // here in impl where it's stand in for whatever
-                                                  // type ends up implementing the keccak trait.
-        keccak.finalize(&mut result);             // Finalizes the hash, folds it, pads it etc.
-        result
-    }
 }
 
 pub fn generate_vanity_priv_key_threaded_result(prefix: &'static str) -> Result<SecretKey, String> {
