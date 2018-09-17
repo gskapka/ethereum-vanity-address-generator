@@ -9,14 +9,16 @@ mod macros;
 
 use rustc_hex::FromHex;
 use tiny_keccak::Keccak;
+use secp256k1::Secp256k1;
 use rand::{Rng, thread_rng};
-use secp256k1::{Secp256k1, Error};
+use secp256k1::Error as SecpError;
 use ethereum_types::{Address, Public};
 use secp256k1::key::{SecretKey, PublicKey};
 use std::sync::mpsc::{RecvError, sync_channel};
 
 /*
  *
+ * TODO: Clean up the _result suffix stuff!
  * TODO: Can I compose/pipe in Rust? - Yes, implement.
  * TODO: Can I call funcs. first class WITH args? - Only via closures :( Ugly
  * TODO: Can I curry functions? - See above
@@ -61,7 +63,7 @@ pub fn log_monad_contents<T>(m: T) -> T
     m
 }
 
-pub fn generate_key_set() -> Result<Address, Error> {//Ethereum_Key_Set {
+pub fn generate_key_set() -> Result<Address, SecpError> {//Ethereum_Key_Set {
     // TODO: use above pipeline and create the struct to make this func work!
     // TODO: create a formatter to print the struct contents
     // TODO: create a getter for the individual keys
@@ -100,7 +102,7 @@ pub fn generate_random_priv_key() -> SecretKey {
     SecretKey::from_slice(&Secp256k1::new(), &get_32_random_bytes_arr()).expect("Failed to generate secret key")
 }
 
-pub fn generate_random_priv_key_result() -> Result<SecretKey, Error> {
+pub fn generate_random_priv_key_result() -> Result<SecretKey, SecpError> {
     SecretKey::from_slice(&Secp256k1::new(), &get_32_random_bytes_arr())
 }
 
@@ -119,7 +121,7 @@ pub fn get_public_key_from_secret(secret_key: SecretKey) -> PublicKey {
     PublicKey::from_secret_key(&Secp256k1::new(), &secret_key).expect("Failed to derive public key!")
 }
 
-pub fn get_public_key_from_secret_result(secret_key: SecretKey) -> Result<PublicKey, Error> {
+pub fn get_public_key_from_secret_result(secret_key: SecretKey) -> Result<PublicKey, SecpError> {
     PublicKey::from_secret_key(&Secp256k1::new(), &secret_key)
 }
 
@@ -184,7 +186,7 @@ pub fn generate_vanity_priv_key_threaded(prefix: &'static str) -> SecretKey {
     rx.recv().expect("No fitting private key found!")
 }
 
-pub fn generate_vanity_priv_key_threaded_result(prefix: &'static str) -> Result<SecretKey, RecvError> {
+pub fn generate_vanity_priv_key_threaded_result(prefix: &'static str) -> Result<SecretKey, String> {
     let pool = threadpool::Builder::new().build();
     let (tx, rx) = sync_channel(1);
     for _ in 0..pool.max_count() {
@@ -192,15 +194,22 @@ pub fn generate_vanity_priv_key_threaded_result(prefix: &'static str) -> Result<
         pool.execute(move || {
             let pref = prefix.from_hex().expect("Error: valid hex required for prefix!");
             loop {
-                let priv_key = generate_random_priv_key();
-                if !starts_with_prefix(priv_key, &pref) {
-                    continue;
-                }
-                tx.send(priv_key).expect("Error sending private key from thread.");
+                match generate_random_priv_key_result() {
+                    Ok(k)  => {
+                        if !starts_with_prefix(k, &pref) {
+                            continue;
+                        }
+                        tx.send(k).expect("Error sending secret from thread!")
+                    },
+                    Err(_) => panic!("Error generating random secret in thread!")
+                };
             }
         });
     };
-    rx.recv()
+    match rx.recv() {
+        Ok(k)  => Ok(k),
+        Err(_) => Err(String::from("Error receiving secret from thread!"))
+    }
 }
 
 
