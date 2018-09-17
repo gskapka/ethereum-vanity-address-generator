@@ -9,11 +9,12 @@ mod keccak;
 use std::fmt;
 use keccak::Keccak256;
 use rustc_hex::FromHex;
-use secp256k1::Secp256k1;
+use secp256k1::{Secp256k1, Message};
 use rand::{Rng, thread_rng};
 use secp256k1::Error as SecpError;
 use ethereum_types::{Address, Public};
 use secp256k1::key::{SecretKey, PublicKey};
+
 
 /*
  * TODO: Implement message signing on the struct! 
@@ -87,6 +88,17 @@ impl EthereumKeySet {
     pub fn unsafe_show_secret(&self) {
         println!("{:?}", self.secret);
     }
+}
+
+pub fn hash_message(msg: &String) -> [u8;32] {
+    msg.as_bytes().keccak256()
+}
+
+pub fn sign_message(hashed_msg: [u8;32], keyset: EthereumKeySet) {
+    let message = Message::from_slice(&hashed_msg).expect("32 bytes");
+    let secp = Secp256k1::new();
+    let sig = secp.sign(&message, &keyset.secret).unwrap(); // FIXME: will panic!
+    assert!(secp.verify(&message, &sig, &keyset.public).is_ok());
 }
 
 // fn generate_oraclize_address() -> SecretKey {
