@@ -5,6 +5,8 @@ fn main() {
     //     Ok(r)  => println!("Secret: {:?}", r),
     //     Err(e) => println!("Error: {}",e)
     // };
-    let keyset = ethkeygen::EthereumKeySet::new_vanity_addr("00");
+    // let keyset = ethkeygen::EthereumKeySet::new_vanity_addr("00");
+    let keyset = ethkeygen::EthereumKeySet::new();
     println!("{}", keyset);
+    keyset.unsafe_show_secret();
 }

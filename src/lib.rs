@@ -65,12 +65,11 @@ pub struct EthereumKeySet {
     address: Address
 }
 
-// TODO: create a formatter to print the struct contents
 impl fmt::Display for EthereumKeySet {
 	fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-		writeln!(f, "{:?}", self.secret)?;
+		writeln!(f, "Private key: [redacted - please use `unsafe_show_secret` to view]")?;
 		writeln!(f, "{:?}", self.public)?;
-		write!(f, "Eth Address: {:?}", self.address)
+		write!(f, "Ethereum Address: {:?}", self.address)
 	}
 }
 
@@ -101,6 +100,10 @@ impl EthereumKeySet {
         };
         let a = public_key_to_address(public_key_to_long_eth_addr(p));
         EthereumKeySet{secret: s, public: p, address: a}
+    }
+
+    pub fn unsafe_show_secret(&self) {
+        println!("{:?}", self.secret);
     }
 }
 
