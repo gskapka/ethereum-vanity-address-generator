@@ -4,19 +4,18 @@ extern crate rustc_hex;
 extern crate threadpool;
 extern crate ethereum_types;
 
+mod sign;
 mod keccak;
-mod sign_msg;
 
 use std::fmt;
 use keccak::Keccak256;
 use rustc_hex::FromHex;
+use secp256k1::Secp256k1;
+pub use sign::SignedMessage;
 use rand::{Rng, thread_rng};
 use secp256k1::Error as SecpError;
-use secp256k1::Secp256k1;
 use ethereum_types::{Address, Public};
 use secp256k1::key::{SecretKey, PublicKey};
-pub use sign_msg::{sign_message, hash_message};
-
 
 /*
  *
@@ -133,7 +132,7 @@ fn public_key_to_long_eth_addr(pub_key: PublicKey) -> Public {
     public
 }
 
-pub fn generate_vanity_priv_key_threaded(prefix: &'static str) -> Result<SecretKey, std::sync::mpsc::RecvError> {
+fn generate_vanity_priv_key_threaded(prefix: &'static str) -> Result<SecretKey, std::sync::mpsc::RecvError> {
     let pool = threadpool::Builder::new().build();
     let (tx, rx) = std::sync::mpsc::sync_channel(1);
     for _ in 0..pool.max_count() {
