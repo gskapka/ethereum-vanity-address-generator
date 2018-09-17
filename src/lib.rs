@@ -5,18 +5,21 @@ extern crate threadpool;
 extern crate ethereum_types;
 
 mod keccak;
+mod sign_msg;
 
 use std::fmt;
 use keccak::Keccak256;
 use rustc_hex::FromHex;
-use secp256k1::{Secp256k1, Message};
 use rand::{Rng, thread_rng};
 use secp256k1::Error as SecpError;
+use secp256k1::Secp256k1;
 use ethereum_types::{Address, Public};
 use secp256k1::key::{SecretKey, PublicKey};
+pub use sign_msg::{sign_message, hash_message};
 
 
 /*
+ *
  * TODO: Implement message signing on the struct! 
  * TODO: Can I compose/pipe in Rust? - Yes, implement.
  * TODO: Can I call funcs. first class WITH args? - Only via closures :( Ugly
@@ -48,12 +51,6 @@ use secp256k1::key::{SecretKey, PublicKey};
  * required!) 
  *
  * */
-
-/*
-let message = Message::from_slice(&[0xab; 32]).expect("32 bytes");
-let sig = secp.sign(&message, &secret_key);
-assert!(secp.verify(&message, &sig, &public_key).is_ok());
-*/
 
 pub struct EthereumKeySet {
     secret: SecretKey,
@@ -89,34 +86,6 @@ impl EthereumKeySet {
         println!("{:?}", self.secret);
     }
 }
-
-pub fn hash_message(msg: &String) -> [u8;32] {
-    msg.as_bytes().keccak256()
-}
-
-pub fn sign_message(hashed_msg: [u8;32], keyset: EthereumKeySet) {
-    let message = Message::from_slice(&hashed_msg).expect("32 bytes");
-    let secp = Secp256k1::new();
-    let sig = secp.sign(&message, &keyset.secret).unwrap(); // FIXME: will panic!
-    assert!(secp.verify(&message, &sig, &keyset.public).is_ok());
-}
-
-// fn generate_oraclize_address() -> SecretKey {
-//     generate_vanity_priv_key("0000")
-// }
-
-// fn generate_vanity_priv_key(prefix: &str) -> SecretKey {
-//     match generate_random_priv_key() {
-//         Ok(k) => {
-//             if starts_with_prefix(k, &prefix.from_hex().expect("Error: valid hex required for prefix!")) {
-//                 k
-//             } else {
-//                 generate_vanity_priv_key(prefix)
-//             }
-//         },
-//         Err(_) => panic!("Error generating random secret!")
-//     }
-// }
 
 fn starts_with_prefix(secret: SecretKey, prefix: &Vec<u8>) -> bool {
     private_key_to_eth_addr(secret).starts_with(&prefix)
