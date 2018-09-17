@@ -4,7 +4,6 @@ extern crate rustc_hex;
 extern crate threadpool;
 extern crate ethereum_types;
 
-mod utils;
 mod keccak;
 
 use std::fmt;
@@ -12,18 +11,15 @@ use keccak::Keccak256;
 use rustc_hex::FromHex;
 use secp256k1::Secp256k1;
 use rand::{Rng, thread_rng};
-use utils::log_monad_contents;
-// use std::sync::mpsc::sync_channel;
 use secp256k1::Error as SecpError;
 use ethereum_types::{Address, Public};
 use secp256k1::key::{SecretKey, PublicKey};
 
 /*
- * TODO: Clean up the _result suffix stuff!
+ * TODO: Implement message signing on the struct! 
  * TODO: Can I compose/pipe in Rust? - Yes, implement.
  * TODO: Can I call funcs. first class WITH args? - Only via closures :( Ugly
  * TODO: Can I curry functions? - See above
- * TODO: Make a new type to hold the key structure plus derivation logic.
  * TODO: Rm panics!
  * 
  * The goal is to generate a private key (with 4 0's maybe?) and then seal 
@@ -58,7 +54,6 @@ let sig = secp.sign(&message, &secret_key);
 assert!(secp.verify(&message, &sig, &public_key).is_ok());
 */
 
-
 pub struct EthereumKeySet {
     secret: SecretKey,
     public: PublicKey,
@@ -74,40 +69,25 @@ impl fmt::Display for EthereumKeySet {
 }
 
 impl EthereumKeySet {
-    // TODO: create a getter for the individual keys inc. dangerous priv key!
-    // TODO: Switch to return a result with the Struct in it!
-    pub fn new() -> EthereumKeySet {
-        let s = match generate_random_priv_key() {
-            Ok(k)  => k,
-            Err(_) => panic!("Error generating secret!")
-        };
-        let p = match get_public_key_from_secret(s) {
-            Ok(k)  => k,
-            Err(_) => panic!("Error getting public key from secret!") 
-        };
+
+    pub fn new() -> Result<EthereumKeySet, SecpError> {
+        let s = generate_random_priv_key()?;
+        let p = get_public_key_from_secret(s)?;
         let a = public_key_to_address(public_key_to_long_eth_addr(p));
-        EthereumKeySet{secret: s, public: p, address: a}
+        Ok(EthereumKeySet{secret: s, public: p, address: a})
     }
 
-    pub fn new_vanity_addr(prefix: &'static str) -> EthereumKeySet {
-        let s = match generate_vanity_priv_key_threaded(prefix) {
-            Ok(k)  => k,
-            Err(_) => panic!("Error generating vanity secret!")
-        };
-        let p = match get_public_key_from_secret(s) {
-            Ok(k)  => k,
-            Err(_) => panic!("Error getting public key from secret!") 
-        };
+    pub fn new_vanity(prefix: &'static str) -> Result<EthereumKeySet, SecpError> {
+        let s = generate_vanity_priv_key_threaded(prefix).unwrap();
+        let p = get_public_key_from_secret(s)?;
         let a = public_key_to_address(public_key_to_long_eth_addr(p));
-        EthereumKeySet{secret: s, public: p, address: a}
+        Ok(EthereumKeySet{secret: s, public: p, address: a})
     }
 
     pub fn unsafe_show_secret(&self) {
         println!("{:?}", self.secret);
     }
 }
-
-
 
 // fn generate_oraclize_address() -> SecretKey {
 //     generate_vanity_priv_key("0000")
@@ -158,7 +138,7 @@ fn get_public_key_from_secret(secret_key: SecretKey) -> Result<PublicKey, SecpEr
 }
 
 fn public_key_to_address(public: Public) -> Address {
-    let hash = public.keccak256();      // Can call keccak on this because the keccak trait accommodates a 32 byte u8 arr.
+    let hash = public.keccak256();
     let mut result = Address::default();
     result.copy_from_slice(&hash[12..]); // Pub addr. is last 20 bytes of the hashed public key.
     result
@@ -172,14 +152,14 @@ fn public_key_to_long_eth_addr(pub_key: PublicKey) -> Public {
     public
 }
 
-pub fn generate_vanity_priv_key_threaded(prefix: &'static str) -> Result<SecretKey, String> {
+pub fn generate_vanity_priv_key_threaded(prefix: &'static str) -> Result<SecretKey, std::sync::mpsc::RecvError> {
     let pool = threadpool::Builder::new().build();
     let (tx, rx) = std::sync::mpsc::sync_channel(1);
     for _ in 0..pool.max_count() {
         let tx = tx.clone();
         pool.execute(move || {
             let pref = prefix.from_hex().expect("Error: valid hex required for prefix!");
-            loop { // Note: Used recursion the first time but no tail-call recursion optimization in Rust :(
+            loop { // Note: Used recursion the first time but no tail recursion in Rust :(
                 match generate_random_priv_key() {
                     Ok(k)  => {
                         if !starts_with_prefix(k, &pref) {
@@ -192,13 +172,10 @@ pub fn generate_vanity_priv_key_threaded(prefix: &'static str) -> Result<SecretK
             }
         });
     };
-    match rx.recv() {
-        Ok(k)  => Ok(k),
-        Err(_) => Err(String::from("Error receiving secret from thread!"))
-    }
+    rx.recv()
 }
 
-// #[cfg(test)]
+// #[cfg(test)] // TODO: Some tests :P
 // mod tests {
 //     #[test]
 //     fn it_works() {
