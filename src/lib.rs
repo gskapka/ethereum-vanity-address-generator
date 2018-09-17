@@ -5,7 +5,6 @@ extern crate threadpool;
 extern crate ethereum_types;
 
 mod utils;
-mod macros;
 mod keccak;
 
 use keccak::Keccak256;
@@ -25,8 +24,7 @@ use secp256k1::key::{SecretKey, PublicKey};
  * TODO: Can I call funcs. first class WITH args? - Only via closures :( Ugly
  * TODO: Can I curry functions? - See above
  * TODO: Make a new type to hold the key structure plus derivation logic.
- * TODO: Put monad logger in utils
- * TODO: Factor our the keccak hasher into it's own file
+ * TODO: Rm panics!
  * 
  * The goal is to generate a private key (with 4 0's maybe?) and then seal 
  * that in the enclave, after first reporting out the enclave what the 
@@ -95,7 +93,10 @@ fn starts_with_prefix(secret: SecretKey, prefix: &Vec<u8>) -> bool {
 }
 
 fn private_key_to_eth_addr(secret: SecretKey) -> Address {
-    public_key_to_address(&public_key_to_long_eth_addr(get_public_key_from_secret(secret))) // TODO: compose!!
+    match get_public_key_from_secret_result(secret) {
+        Ok(k)  => public_key_to_address(&public_key_to_long_eth_addr(k)),
+        Err(_) => panic!("Error getting public key from secret!")
+    }
 }
 
 fn generate_random_priv_key_result() -> Result<SecretKey, SecpError> {
@@ -112,9 +113,6 @@ fn get_x_random_bytes_vec(len: usize) -> Vec<u8> {
     let mut x = vec![0u8; len]; 
     thread_rng().fill_bytes(&mut x);
     x
-}
-fn get_public_key_from_secret(secret_key: SecretKey) -> PublicKey {
-    PublicKey::from_secret_key(&Secp256k1::new(), &secret_key).expect("Failed to derive public key!")
 }
 
 fn get_public_key_from_secret_result(secret_key: SecretKey) -> Result<PublicKey, SecpError> {
