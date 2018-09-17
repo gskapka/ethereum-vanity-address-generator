@@ -7,12 +7,13 @@ extern crate ethereum_types;
 mod utils;
 mod keccak;
 
+use std::fmt;
 use keccak::Keccak256;
 use rustc_hex::FromHex;
 use secp256k1::Secp256k1;
 use rand::{Rng, thread_rng};
 use utils::log_monad_contents;
-use std::sync::mpsc::sync_channel;
+// use std::sync::mpsc::sync_channel;
 use secp256k1::Error as SecpError;
 use ethereum_types::{Address, Public};
 use secp256k1::key::{SecretKey, PublicKey};
@@ -57,18 +58,53 @@ let sig = secp.sign(&message, &secret_key);
 assert!(secp.verify(&message, &sig, &public_key).is_ok());
 */
 
-fn generate_key_set() -> Result<Address, SecpError> {//Ethereum_Key_Set {
-    // TODO: use above pipeline and create the struct to make this func work!
-    // TODO: create a formatter to print the struct contents
-    // TODO: create a getter for the individual keys
-    // TODO: Implement something that returns this struct in the vanity stuff!
-    generate_random_priv_key()
-        .map(log_monad_contents)
-        .and_then(get_public_key_from_secret) // and_then == chain/bind
-        .map(log_monad_contents)
-        .map(public_key_to_long_eth_addr) // TODO: combine?
-        .map(public_key_to_address)
+
+pub struct EthereumKeySet {
+    secret: SecretKey,
+    public: PublicKey,
+    address: Address
 }
+
+// TODO: create a formatter to print the struct contents
+impl fmt::Display for EthereumKeySet {
+	fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+		writeln!(f, "{:?}", self.secret)?;
+		writeln!(f, "{:?}", self.public)?;
+		write!(f, "Eth Address: {:?}", self.address)
+	}
+}
+
+impl EthereumKeySet {
+    // TODO: create a getter for the individual keys inc. dangerous priv key!
+    // TODO: Switch to return a result with the Struct in it!
+    pub fn new() -> EthereumKeySet {
+        let s = match generate_random_priv_key() {
+            Ok(k)  => k,
+            Err(_) => panic!("Error generating secret!")
+        };
+        let p = match get_public_key_from_secret(s) {
+            Ok(k)  => k,
+            Err(_) => panic!("Error getting public key from secret!") 
+        };
+        let a = public_key_to_address(public_key_to_long_eth_addr(p));
+        EthereumKeySet{secret: s, public: p, address: a}
+    }
+
+    pub fn new_vanity_addr(prefix: &'static str) -> EthereumKeySet {
+        let s = match generate_vanity_priv_key_threaded(prefix) {
+            Ok(k)  => k,
+            Err(_) => panic!("Error generating vanity secret!")
+        };
+        let p = match get_public_key_from_secret(s) {
+            Ok(k)  => k,
+            Err(_) => panic!("Error getting public key from secret!") 
+        };
+        let a = public_key_to_address(public_key_to_long_eth_addr(p));
+        EthereumKeySet{secret: s, public: p, address: a}
+    }
+}
+
+
 
 // fn generate_oraclize_address() -> SecretKey {
 //     generate_vanity_priv_key("0000")
@@ -135,7 +171,7 @@ fn public_key_to_long_eth_addr(pub_key: PublicKey) -> Public {
 
 pub fn generate_vanity_priv_key_threaded(prefix: &'static str) -> Result<SecretKey, String> {
     let pool = threadpool::Builder::new().build();
-    let (tx, rx) = sync_channel(1);
+    let (tx, rx) = std::sync::mpsc::sync_channel(1);
     for _ in 0..pool.max_count() {
         let tx = tx.clone();
         pool.execute(move || {
