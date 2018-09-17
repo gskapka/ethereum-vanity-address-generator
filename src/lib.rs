@@ -5,16 +5,16 @@ extern crate threadpool;
 extern crate tiny_keccak;
 extern crate ethereum_types;
 
-mod macros;
+// mod macros;
 
 use rustc_hex::FromHex;
 use tiny_keccak::Keccak;
 use secp256k1::Secp256k1;
 use rand::{Rng, thread_rng};
+use std::sync::mpsc::sync_channel;
 use secp256k1::Error as SecpError;
 use ethereum_types::{Address, Public};
 use secp256k1::key::{SecretKey, PublicKey};
-use std::sync::mpsc::{RecvError, sync_channel};
 
 /*
  *
@@ -81,11 +81,15 @@ pub fn generate_oraclize_address() -> SecretKey {
 }
 
 pub fn generate_vanity_priv_key(prefix: &str) -> SecretKey {
-    let priv_key = generate_random_priv_key();
-    if starts_with_prefix(priv_key, &prefix.from_hex().expect("Error: valid hex required for prefix!")) {
-        priv_key
-    } else {
-        generate_vanity_priv_key(prefix)
+    match generate_random_priv_key_result() {
+        Ok(k) => {
+            if starts_with_prefix(k, &prefix.from_hex().expect("Error: valid hex required for prefix!")) {
+                k
+            } else {
+                generate_vanity_priv_key(prefix)
+            }
+        },
+        Err(_) => panic!("Error generating random secret!")
     }
 }
 
@@ -95,11 +99,6 @@ pub fn starts_with_prefix(secret: SecretKey, prefix: &Vec<u8>) -> bool {
 
 pub fn private_key_to_eth_addr(secret: SecretKey) -> Address {
     public_key_to_address(&public_key_to_long_eth_addr(get_public_key_from_secret(secret))) // TODO: compose!!
-}
-
-
-pub fn generate_random_priv_key() -> SecretKey {
-    SecretKey::from_slice(&Secp256k1::new(), &get_32_random_bytes_arr()).expect("Failed to generate secret key")
 }
 
 pub fn generate_random_priv_key_result() -> Result<SecretKey, SecpError> {
@@ -148,7 +147,7 @@ pub fn public_key_to_long_eth_addr(pub_key: PublicKey) -> Public {
 }
 
 // TODO: implement a version that will hash longer input.
-pub trait Keccak256<T> {
+trait Keccak256<T> {
     fn keccak256(&self) -> T where T: Sized;      // Takes any type that implements the 'Sized' typeclass.
 }
 
@@ -167,25 +166,6 @@ impl Keccak256<[u8; 32]> for [u8] {               // Takes arr of length 32 & ty
     }
 }
 
-pub fn generate_vanity_priv_key_threaded(prefix: &'static str) -> SecretKey {
-    let pool = threadpool::Builder::new().build();
-    let (tx, rx) = sync_channel(1);
-    for _ in 0..pool.max_count() {
-        let tx = tx.clone();
-        pool.execute(move || {
-            let pref = prefix.from_hex().expect("Error: valid hex required for prefix!");
-            loop {
-                let priv_key = generate_random_priv_key();
-                if !starts_with_prefix(priv_key, &pref) {
-                    continue;
-                }
-                tx.send(priv_key).expect("Error sending private key from thread.");
-            }
-        });
-    };
-    rx.recv().expect("No fitting private key found!")
-}
-
 pub fn generate_vanity_priv_key_threaded_result(prefix: &'static str) -> Result<SecretKey, String> {
     let pool = threadpool::Builder::new().build();
     let (tx, rx) = sync_channel(1);
@@ -193,7 +173,7 @@ pub fn generate_vanity_priv_key_threaded_result(prefix: &'static str) -> Result<
         let tx = tx.clone();
         pool.execute(move || {
             let pref = prefix.from_hex().expect("Error: valid hex required for prefix!");
-            loop {
+            loop { // Note: Used recursion the first time but no tail-call recursion optimization in Rust :(
                 match generate_random_priv_key_result() {
                     Ok(k)  => {
                         if !starts_with_prefix(k, &pref) {
@@ -211,7 +191,6 @@ pub fn generate_vanity_priv_key_threaded_result(prefix: &'static str) -> Result<
         Err(_) => Err(String::from("Error receiving secret from thread!"))
     }
 }
-
 
 #[cfg(test)]
 mod tests {
