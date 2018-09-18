@@ -1,12 +1,10 @@
-extern crate secp256k1;
-
 use std::fmt;
 use EthereumKeySet;
 use rustc_hex::ToHex;
 use keccak::Keccak256;
+use self::key::PublicKey;
 use ethereum_types::Address;
 use secp256k1::Error as SecpError;
-use self::key::{SecretKey, PublicKey};
 use secp256k1::{Secp256k1, Message, key};
 
 pub struct SignedMessage {
