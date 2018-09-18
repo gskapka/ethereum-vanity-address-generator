@@ -2,17 +2,18 @@ extern crate secp256k1;
 
 use std::fmt;
 use EthereumKeySet;
+use rustc_hex::ToHex;
 use keccak::Keccak256;
 use ethereum_types::Address;
 use secp256k1::Error as SecpError;
 use self::key::{SecretKey, PublicKey};
-use secp256k1::{Secp256k1, Message, RecoverableSignature, key};
+use secp256k1::{Secp256k1, Message, key};
 
 pub struct SignedMessage {
     msg: String,
     addr: Address,
     key: PublicKey,
-    sig: RecoverableSignature
+    sig: [u8;65]
 }
 
 impl fmt::Display for SignedMessage {
@@ -20,7 +21,7 @@ impl fmt::Display for SignedMessage {
 		writeln!(f, "Signed message:\n{}", self.msg)?;
 		writeln!(f, "\nSigning key:\n{:?}", self.key)?;
         writeln!(f, "\nEthereum Address\n{:?}", self.addr)?;
-		write!(f, "\nSignature: \n{:?}", self.sig)
+		write!(f, "\nSignature: \n{}", self.sig.to_hex())
 	}
 }
 
@@ -31,28 +32,25 @@ impl SignedMessage {
     }
 }
 
-// fn prefix_message<'a>(msg: &'a str) -> &'a str {
-//     // let prefix: &str = "\x19Ethereum Signed Message:\n";
-//     // let len: &str = &msg.len().to_string();
-//     let mut final_str = String::new();
-//     final_str.push("\x19Ethereum Signed Message:\n");
-//     final_str.push(&msg.len().to_string());
-//     final_str.push(msg);
-//     final_str
-// }
-
 fn hash_message(msg: &str) -> [u8;32] {
     msg.as_bytes().keccak256()
 }
 
-fn sign_message(hashed_msg: [u8;32], keyset: &EthereumKeySet) -> Result<RecoverableSignature, SecpError> {
+// Note: See issues here on standardizing of sigs. 
+// https://github.com/paritytech/parity-ethereum/issues/5490
+fn sign_message(hashed_msg: [u8;32], keyset: &EthereumKeySet) -> Result<[u8;65], SecpError> {
     let message = Message::from_slice(&hashed_msg).expect("32 bytes");
-    let secp = Secp256k1::new(); // Create a signing capable context
-    match secp.sign_recoverable(&message, &keyset.secret) {
+    let secp_context = Secp256k1::new();
+    match secp_context.sign_recoverable(&message, &keyset.secret) {
         Ok(sig) => {
-            // assert!(secp.verify(&message, &sig, &keyset.public).is_ok());
-            Ok(sig)
+            let (rec_id, data) = sig.serialize_compact(&secp_context);
+            let mut data_arr = [0; 65];
+            data_arr[0..64].copy_from_slice(&data[0..64]);
+            data_arr[64] = rec_id.to_i32() as u8;
+            Ok(data_arr)
         }
         Err(e) => Err(e)
     }
 }
+
+// TODO: Write something to verify a msg?

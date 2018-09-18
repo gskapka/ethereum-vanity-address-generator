@@ -19,11 +19,13 @@ use secp256k1::key::{SecretKey, PublicKey};
 
 /*
  *
+ * TODO: Factor out the key creation too & just have this lib as an entry point!
  * TODO: Implement message signing on the struct! 
  * TODO: Can I compose/pipe in Rust? - Yes, implement.
  * TODO: Can I call funcs. first class WITH args? - Only via closures :( Ugly
  * TODO: Can I curry functions? - See above
  * TODO: Rm panics!
+ * TODO: Error handle better so I can ? everywhere for terseness.
  * 
  * The goal is to generate a private key (with 4 0's maybe?) and then seal 
  * that in the enclave, after first reporting out the enclave what the 
