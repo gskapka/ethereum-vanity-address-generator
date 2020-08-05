@@ -1,3 +1,5 @@
+#![allow(clippy::match_bool)]
+
 extern crate rand;
 extern crate docopt;
 extern crate simplelog;
@@ -36,7 +38,7 @@ pub fn main() -> Result<()> {
                 }
                 CliArgs {cmd_generateVanityAddress: true, ..} => {
                     info!("✔ Generating vanity address...");
-                    generate_vanity_address(cli_args.arg_prefix.clone())
+                    generate_vanity_address(cli_args.arg_prefix)
                 }
                 CliArgs {cmd_version: true, ..} => {
                     info!("✔ Getting tool version info...");

@@ -92,7 +92,7 @@ impl EthereumKeys {
                                     }
                                     tx.send(eth_keys).expect("Error sending generted keys from thread!")
                                 },
-                                Err(_) => panic!("Error generating random ethereum keys in thread!")
+                                Err(err) => panic!("Error generating random ethereum keys in thread: {}", err)
                             };
                         }
                     });

@@ -14,7 +14,7 @@ pub fn maybe_strip_hex_prefix(hex: &str) -> Result<String> {
 }
 
 pub fn maybe_pad_hex(hex: &str) -> String {
-    match hex.chars().collect::<Vec<char>>().len() % 2 {
+    match hex.chars().count() % 2 {
         0 => hex.to_string(),
         _ => format!("0{}", hex),
     }
@@ -28,7 +28,7 @@ pub fn validate_hex(hex: &str) -> Result<String> {
 }
 
 pub fn validate_prefix_hex_length(hex: &str) -> Result<String> {
-    if hex.chars().collect::<Vec<char>>().len() <= PREFIX_MAX_LENGTH {
+    if hex.chars().count() <= PREFIX_MAX_LENGTH {
         Ok(hex.to_string())
     } else {
         Err(AppError::Custom(format!("Your hex prefix should be <= {}!", PREFIX_MAX_LENGTH)))
@@ -92,7 +92,7 @@ mod tests {
     #[test]
     fn should_validate_prefix_length() {
         let good_length_prefix = "c0ffee";
-        assert!(good_length_prefix.chars().collect::<Vec<char>>().len() <= PREFIX_MAX_LENGTH);
+        assert!(good_length_prefix.chars().count() <= PREFIX_MAX_LENGTH);
         let result = validate_prefix_hex_length(&good_length_prefix);
         assert!(result.is_ok());
     }
@@ -101,7 +101,7 @@ mod tests {
     fn should_fail_to_validate_bad_length_prefix() {
         let good_length_prefix = "c0ffeec0ffeec0ffeec0ffeec0ffeec0ffee";
         let expected_error = format!("Your hex prefix should be <= {}!", PREFIX_MAX_LENGTH);
-        assert!(good_length_prefix.chars().collect::<Vec<char>>().len() > PREFIX_MAX_LENGTH);
+        assert!(good_length_prefix.chars().count() > PREFIX_MAX_LENGTH);
         match validate_prefix_hex_length(&good_length_prefix) {
             Err(AppError::Custom(err)) => assert_eq!(err, expected_error),
             Err(err) => panic!("Wrong error: {}", err),
