@@ -11,7 +11,7 @@ pub struct CliArgs {
     pub cmd_version: bool,
     pub arg_prefix: String,
     pub flag_logLevel: String,
-    pub cmd_generateAddress: bool,
+    pub cmd_generateRandomAddress: bool,
     pub cmd_generateVanityAddress: bool,
 }
 

@@ -12,13 +12,13 @@ A simple CLI for creating vanity ethereum addresses (I.E. Those that begin with 
 
 Usage:  ethereum-vanity-address-generator [--help]
         ethereum-vanity-address-generator version
-        ethereum-vanity-address-generator generateAddress [--logLevel=<string>]
+        ethereum-vanity-address-generator generateRandomAddress [--logLevel=<string>]
         ethereum-vanity-address-generator generateVanityAddress <prefix> [--logLevel=<string>]
 
 Commands:
 
         version                ❍ Show version info.
-        generateAddress        ❍ Generate a random ethereum address.
+        generateRandomAddress  ❍ Generate a random ethereum address.
         generateVanityAddress  ❍ Generate a vanity etheruem address that starts with the provided hex prefix.
         <prefix>               ❍ Valid hex you want as a prefix for your vanity ethereum address.
 
