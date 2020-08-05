@@ -1,5 +1,9 @@
 use tiny_keccak::keccak256;
 use ethereum_types::Address as EthAddress;
+use serde_json::{
+    json,
+    Value as JsonValue,
+};
 use crate::lib::{
     types::Result,
     crypto_utils::generate_random_private_key,
@@ -46,6 +50,13 @@ impl EthereumKeys {
             private_key: *private_key,
             address_string: hex::encode(&address),
         }
+    }
+
+    pub fn to_json(&self) -> JsonValue {
+        json!({
+            "address": format!("0x{}", self.address_string),
+            "private_key": format!("0x{:x}", self.private_key),
+        })
     }
 }
 
@@ -95,5 +106,16 @@ mod tests {
         let prefix: String = keys.address_string.chars().take(5).collect();
         let result = keys.address_starts_with(&prefix);
         assert!(result);
+    }
+
+    #[test]
+    fn should_convert_ethereum_keys_to_json_correctly() {
+        let expected_result = json!({
+            "address": "0x3eea9f85661bac934637b8407f9361caa14f5163",
+            "private_key": "0xdecaffb75a41481965e391fb6d4406b6c356d20194c5a88935151f0513c0ffee"
+        });
+        let keys = get_sample_ethereum_keys();
+        let result = keys.to_json();
+        assert_eq!(result, expected_result);
     }
 }
