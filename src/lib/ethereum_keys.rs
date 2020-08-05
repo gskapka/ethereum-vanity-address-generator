@@ -1,5 +1,9 @@
 use tiny_keccak::keccak256;
 use ethereum_types::Address as EthAddress;
+use crate::lib::{
+    types::Result,
+    crypto_utils::generate_random_private_key,
+};
 use secp256k1::{
     Secp256k1,
     key::{
@@ -23,6 +27,10 @@ impl EthereumKeys {
     fn public_key_to_eth_address(public_key: &PublicKey) -> EthAddress {
         // NOTE: Need the last 20 bytes of the hash of the uncompresed form of the public key, minus it's prefix byte.
         EthAddress::from_slice(&keccak256(&public_key.serialize_uncompressed()[1..])[12..])
+    }
+
+    pub fn new_random_key() -> Result<Self> {
+        Ok(Self::from_private_key(&generate_random_private_key()?))
     }
 
     pub fn address_starts_with(&self, prefix: &str) -> bool {
@@ -57,6 +65,12 @@ mod tests {
 
     fn get_sample_ethereum_keys() -> EthereumKeys {
         EthereumKeys::from_private_key(&get_sample_private_key())
+    }
+
+    #[test]
+    fn should_generate_new_random_eth_keys() {
+        let result = EthereumKeys::new_random_key();
+        assert!(result.is_ok());
     }
 
     #[test]
