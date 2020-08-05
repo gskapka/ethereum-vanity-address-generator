@@ -1,4 +1,5 @@
 pub(crate) mod types;
+pub(crate) mod utils;
 pub(crate) mod errors;
 pub(crate) mod constants;
 pub(crate) mod usage_info;
