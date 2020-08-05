@@ -1,12 +1,15 @@
 use tiny_keccak::keccak256;
 use ethereum_types::Address as EthAddress;
+use std::sync::{
+    Arc,
+    mpsc,
+};
 use serde_json::{
     json,
     Value as JsonValue,
 };
 use crate::lib::{
     types::Result,
-    errors::AppError,
     crypto_utils::generate_random_private_key,
     utils::{
         validate_hex,
@@ -24,18 +27,18 @@ use secp256k1::{
 };
 
 pub struct EthereumKeys {
-    public_key: PublicKey,
     private_key: SecretKey,
     pub address: EthAddress,
     pub address_string: String,
 }
 
 impl EthereumKeys {
-    fn validate_prefix_hex(prefix_hex: &str) -> Result<String> {
+    fn validate_prefix_hex(prefix_hex: &str) -> Result<()> {
         maybe_strip_hex_prefix(prefix_hex)
             .map(|hex_no_prefix| maybe_pad_hex(&hex_no_prefix))
             .and_then(|padded_hex| validate_prefix_hex_length(&padded_hex))
             .and_then(|correct_length_hex| validate_hex(&correct_length_hex))
+            .and(Ok(()))
     }
 
     fn get_public_key_from_private_key(private_key: &SecretKey) -> PublicKey {
@@ -52,15 +55,13 @@ impl EthereumKeys {
     }
 
     pub fn address_starts_with(&self, prefix: &str) -> bool {
-        self.address_string.starts_with(prefix)
+        self.address_string.starts_with(&prefix)
     }
 
     pub fn from_private_key(private_key: &SecretKey) -> Self {
-        let public_key = Self::get_public_key_from_private_key(private_key);
-        let address = Self::public_key_to_eth_address(&public_key);
+        let address = Self::public_key_to_eth_address(&Self::get_public_key_from_private_key(private_key));
         EthereumKeys {
             address,
-            public_key,
             private_key: *private_key,
             address_string: hex::encode(&address),
         }
@@ -72,13 +73,39 @@ impl EthereumKeys {
             "private_key": format!("0x{:x}", self.private_key),
         })
     }
+
+    pub fn new_vanity_address(prefix_string: String) -> Result<Self> {
+        let prefix_arc = Arc::new(prefix_string.clone());
+        Self::validate_prefix_hex(&prefix_string)
+            .and_then(|_| {
+                let pool = threadpool::Builder::new().build();
+                let (tx, rx) = mpsc::sync_channel(1);
+                for _ in 0..pool.max_count() {
+                    let prefix = Arc::clone(&prefix_arc);
+                    let tx = tx.clone();
+                    pool.execute(move || {
+                        loop {
+                            match Self::new_random_address() {
+                                Ok(eth_keys)  => {
+                                    if !eth_keys.address_starts_with(&prefix) {
+                                        continue;
+                                    }
+                                    tx.send(eth_keys).expect("Error sending generted keys from thread!")
+                                },
+                                Err(_) => panic!("Error generating random ethereum keys in thread!")
+                            };
+                        }
+                    });
+                };
+                Ok(rx.recv()?)
+            })
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use secp256k1::key::SecretKey;
-    use crate::lib::crypto_utils::generate_random_private_key;
 
     fn get_sample_private_key_hex() -> String {
         "decaffb75a41481965e391fb6d4406b6c356d20194c5a88935151f0513c0ffee".to_string()
@@ -110,7 +137,7 @@ mod tests {
     fn should_return_false_if_address_does_not_start_with_prefix() {
         let prefix = "decaf";
         let keys = get_sample_ethereum_keys();
-        let result = keys.address_starts_with(prefix);
+        let result = keys.address_starts_with(&prefix);
         assert!(!result);
     }
 
@@ -131,5 +158,12 @@ mod tests {
         let keys = get_sample_ethereum_keys();
         let result = keys.to_json();
         assert_eq!(result, expected_result);
+    }
+
+    #[test]
+    fn should_generate_new_vanity_address() {
+        let prefix = "c0".to_string();
+        let result = EthereumKeys::new_vanity_address(prefix.clone()).unwrap();
+        assert!(result.address_string.starts_with(&prefix));
     }
 }

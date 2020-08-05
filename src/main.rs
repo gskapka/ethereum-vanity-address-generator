@@ -36,7 +36,7 @@ pub fn main() -> Result<()> {
                 }
                 CliArgs {cmd_generateVanityAddress: true, ..} => {
                     info!("✔ Generating vanity address...");
-                    generate_vanity_address(&cli_args.arg_prefix)
+                    generate_vanity_address(cli_args.arg_prefix.clone())
                 }
                 CliArgs {cmd_version: true, ..} => {
                     info!("✔ Getting tool version info...");
