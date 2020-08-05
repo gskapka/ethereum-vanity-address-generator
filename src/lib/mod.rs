@@ -1,0 +1,9 @@
+pub(crate) mod types;
+pub(crate) mod errors;
+pub(crate) mod constants;
+pub(crate) mod usage_info;
+pub(crate) mod get_cli_args;
+pub(crate) mod initialize_logger;
+pub(crate) mod get_tool_version_info;
+pub(crate) mod generate_random_address;
+pub(crate) mod generate_vanity_address;
