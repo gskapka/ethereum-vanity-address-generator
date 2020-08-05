@@ -28,9 +28,9 @@ use crate::lib::{
 pub fn main() -> Result<()> {
     match get_cli_args()
         .and_then(maybe_initialize_logger_and_return_cli_args)
-        .and_then(|cli_args| -> Result<String> {
+        .and_then(|cli_args|
             match cli_args {
-                CliArgs {cmd_generateAddress: true, ..} => {
+                CliArgs {cmd_generateRandomAddress: true, ..} => {
                     info!("✔ Generating random address...");
                     generate_random_address()
                 }
@@ -44,10 +44,10 @@ pub fn main() -> Result<()> {
                 }
                 _ => Err(AppError::Custom(USAGE_INFO.to_string()))
             }
-        }) {
+        ) {
 
-            Ok(result) => {
-                println!("{:?}", result);
+            Ok(json) => {
+                println!("{}", json);
                 Ok(())
             },
             Err(e) => {
