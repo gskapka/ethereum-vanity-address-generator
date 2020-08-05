@@ -6,7 +6,14 @@ use serde_json::{
 };
 use crate::lib::{
     types::Result,
+    errors::AppError,
     crypto_utils::generate_random_private_key,
+    utils::{
+        validate_hex,
+        maybe_pad_hex,
+        maybe_strip_hex_prefix,
+        validate_prefix_hex_length
+    },
 };
 use secp256k1::{
     Secp256k1,
@@ -24,6 +31,13 @@ pub struct EthereumKeys {
 }
 
 impl EthereumKeys {
+    fn validate_prefix_hex(prefix_hex: &str) -> Result<String> {
+        maybe_strip_hex_prefix(prefix_hex)
+            .map(|hex_no_prefix| maybe_pad_hex(&hex_no_prefix))
+            .and_then(|padded_hex| validate_prefix_hex_length(&padded_hex))
+            .and_then(|correct_length_hex| validate_hex(&correct_length_hex))
+    }
+
     fn get_public_key_from_private_key(private_key: &SecretKey) -> PublicKey {
         PublicKey::from_secret_key(&Secp256k1::new(), private_key)
     }
