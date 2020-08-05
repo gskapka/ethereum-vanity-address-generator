@@ -33,7 +33,7 @@ impl EthereumKeys {
         EthAddress::from_slice(&keccak256(&public_key.serialize_uncompressed()[1..])[12..])
     }
 
-    pub fn new_random_key() -> Result<Self> {
+    pub fn new_random_address() -> Result<Self> {
         Ok(Self::from_private_key(&generate_random_private_key()?))
     }
 
@@ -80,7 +80,7 @@ mod tests {
 
     #[test]
     fn should_generate_new_random_eth_keys() {
-        let result = EthereumKeys::new_random_key();
+        let result = EthereumKeys::new_random_address();
         assert!(result.is_ok());
     }
 

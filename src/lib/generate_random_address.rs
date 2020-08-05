@@ -5,5 +5,5 @@ use crate::lib::{
 };
 
 pub fn generate_random_address() -> Result<JsonValue> {
-    Ok(EthereumKeys::new_random_key()?.to_json())
+    Ok(EthereumKeys::new_random_address()?.to_json())
 }
