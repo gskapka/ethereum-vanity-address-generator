@@ -5,9 +5,9 @@ authors = ["Greg Kapka <greg@kapka.co.uk>"]
 
 [dependencies]
 log = "0.4.8"
+hex = "=0.4.0"
 rand = "=0.7.2"
 docopt = "1.1.0"
-rustc-hex = "1.0"
 tiny-keccak = "1.4"
 simplelog = "0.7.3"
 secp256k1 = "0.17.2"
