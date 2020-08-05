@@ -1,12 +1,17 @@
 [package]
-name = "ethkeygen"
-version = "0.1.0"
-authors = ["gregkapka <greg@oraclize.it>"]
+name = "ethereum-vanity-address-generator"
+version = "1.0.0"
+authors = ["Greg Kapka <greg@kapka.co.uk>"]
 
 [dependencies]
 rand = "0.4"
+log = "0.4.8"
+docopt = "1.1.0"
 rustc-hex = "1.0"
 tiny-keccak = "1.4"
+simplelog = "0.7.3"
 threadpool = "1.7.1"
+serde_derive = "1.0.101"
 ethereum-types = "0.4.0"
+serde = { version = "1", features = ["derive"] }
 eth-secp256k1 = { git = "https://github.com/paritytech/rust-secp256k1" }
