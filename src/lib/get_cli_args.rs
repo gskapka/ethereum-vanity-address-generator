@@ -6,7 +6,7 @@ use crate::lib::{
 };
 
 #[allow(non_snake_case)]
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct CliArgs {
     pub cmd_version: bool,
     pub arg_prefix: String,

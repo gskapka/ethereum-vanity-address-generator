@@ -55,7 +55,7 @@ impl EthereumKeys {
     }
 
     pub fn address_starts_with(&self, prefix: &str) -> bool {
-        self.address_string.starts_with(&prefix)
+        self.address_string.starts_with(prefix)
     }
 
     pub fn from_private_key(private_key: &SecretKey) -> Self {
@@ -63,7 +63,7 @@ impl EthereumKeys {
         EthereumKeys {
             address,
             private_key: *private_key,
-            address_string: hex::encode(&address),
+            address_string: hex::encode(address),
         }
     }
 
