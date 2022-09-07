@@ -1,14 +1,13 @@
-use crate::lib::{
-    types::Result,
-    errors::AppError,
-    constants::PREFIX_MAX_LENGTH,
-};
+use crate::lib::{constants::PREFIX_MAX_LENGTH, errors::AppError, types::Result};
 
 pub fn maybe_strip_hex_prefix(hex: &str) -> Result<String> {
     let lowercase_hex_prefix = "0x";
     let uppercase_hex_prefix = "0X";
     match hex.starts_with(lowercase_hex_prefix) || hex.starts_with(uppercase_hex_prefix) {
-        true => Ok(hex.trim_start_matches(lowercase_hex_prefix).trim_start_matches(uppercase_hex_prefix).to_string()),
+        true => Ok(hex
+            .trim_start_matches(lowercase_hex_prefix)
+            .trim_start_matches(uppercase_hex_prefix)
+            .to_string()),
         false => Ok(hex.to_string()),
     }
 }
@@ -23,7 +22,9 @@ pub fn maybe_pad_hex(hex: &str) -> String {
 pub fn validate_hex(hex: &str) -> Result<String> {
     match hex::decode(hex) {
         Ok(_) => Ok(hex.to_string()),
-        Err(_) => Err(AppError::Custom("Could not decode hex - please check your input!".to_string()))
+        Err(_) => Err(AppError::Custom(
+            "Could not decode hex - please check your input!".to_string(),
+        )),
     }
 }
 
@@ -31,11 +32,12 @@ pub fn validate_prefix_hex_length(hex: &str) -> Result<String> {
     if hex.chars().count() <= PREFIX_MAX_LENGTH {
         Ok(hex.to_string())
     } else {
-        Err(AppError::Custom(format!("Your hex prefix should be <= {}!", PREFIX_MAX_LENGTH)))
+        Err(AppError::Custom(format!(
+            "Your hex prefix should be <= {}!",
+            PREFIX_MAX_LENGTH
+        )))
     }
-
 }
-
 
 #[cfg(test)]
 mod tests {

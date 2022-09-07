@@ -1,9 +1,6 @@
 use crate::lib::types::Result;
+use rand::{thread_rng, RngCore};
 use secp256k1::key::SecretKey;
-use rand::{
-    RngCore,
-    thread_rng,
-};
 
 fn get_x_random_bytes(num_bytes: usize) -> Vec<u8> {
     let mut bytes = vec![0u8; num_bytes];
@@ -42,6 +39,5 @@ mod test {
     fn should_generate_random_private_key() {
         let result = generate_random_private_key();
         assert!(result.is_ok());
-
     }
 }

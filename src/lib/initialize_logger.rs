@@ -1,10 +1,6 @@
-use simplelog::*;
+use crate::lib::{errors::AppError, get_cli_args::CliArgs, types::Result};
 use log::LevelFilter;
-use crate::lib::{
-    types::Result,
-    errors::AppError,
-    get_cli_args::CliArgs,
-};
+use simplelog::*;
 
 pub fn maybe_initialize_logger_and_return_cli_args(cli_args: CliArgs) -> Result<CliArgs> {
     match &cli_args.flag_logLevel[..] {
@@ -16,7 +12,10 @@ pub fn maybe_initialize_logger_and_return_cli_args(cli_args: CliArgs) -> Result<
                 "debug" => Ok(LevelFilter::Debug),
                 "error" => Ok(LevelFilter::Error),
                 "trace" => Ok(LevelFilter::Trace),
-                _ => Err(AppError::Custom(format!("✘ Not a valid log level: '{}'", cli_args.flag_logLevel)))
+                _ => Err(AppError::Custom(format!(
+                    "✘ Not a valid log level: '{}'",
+                    cli_args.flag_logLevel
+                ))),
             }?,
             Config::default(),
             TerminalMode::Mixed,
@@ -24,8 +23,8 @@ pub fn maybe_initialize_logger_and_return_cli_args(cli_args: CliArgs) -> Result<
             Ok(_) => {
                 info!("✔ Logger initialized successfully!");
                 Ok(cli_args)
-            },
-            Err(e) => Err(AppError::Custom(e.to_string()))
-        }
+            }
+            Err(e) => Err(AppError::Custom(e.to_string())),
+        },
     }
 }

@@ -1,30 +1,16 @@
-use tiny_keccak::keccak256;
-use ethereum_types::Address as EthAddress;
-use std::sync::{
-    Arc,
-    mpsc,
-};
-use serde_json::{
-    json,
-    Value as JsonValue,
-};
 use crate::lib::{
-    types::Result,
     crypto_utils::generate_random_private_key,
-    utils::{
-        validate_hex,
-        maybe_pad_hex,
-        maybe_strip_hex_prefix,
-        validate_prefix_hex_length
-    },
+    types::Result,
+    utils::{maybe_pad_hex, maybe_strip_hex_prefix, validate_hex, validate_prefix_hex_length},
 };
+use ethereum_types::Address as EthAddress;
 use secp256k1::{
+    key::{PublicKey, SecretKey},
     Secp256k1,
-    key::{
-        SecretKey,
-        PublicKey
-    },
 };
+use serde_json::{json, Value as JsonValue};
+use std::sync::{mpsc, Arc};
+use tiny_keccak::keccak256;
 
 pub struct EthereumKeys {
     private_key: SecretKey,
@@ -59,7 +45,8 @@ impl EthereumKeys {
     }
 
     pub fn from_private_key(private_key: &SecretKey) -> Self {
-        let address = Self::public_key_to_eth_address(&Self::get_public_key_from_private_key(private_key));
+        let address =
+            Self::public_key_to_eth_address(&Self::get_public_key_from_private_key(private_key));
         EthereumKeys {
             address,
             private_key: *private_key,
@@ -76,29 +63,29 @@ impl EthereumKeys {
 
     pub fn new_vanity_address(prefix_string: String) -> Result<Self> {
         let prefix_arc = Arc::new(prefix_string.clone());
-        Self::validate_prefix_hex(&prefix_string)
-            .and_then(|_| {
-                let pool = threadpool::Builder::new().build();
-                let (tx, rx) = mpsc::sync_channel(1);
-                for _ in 0..pool.max_count() {
-                    let prefix = Arc::clone(&prefix_arc);
-                    let tx = tx.clone();
-                    pool.execute(move || {
-                        loop {
-                            match Self::new_random_address() {
-                                Ok(eth_keys)  => {
-                                    if !eth_keys.address_starts_with(&prefix) {
-                                        continue;
-                                    }
-                                    tx.send(eth_keys).expect("Error sending generted keys from thread!")
-                                },
-                                Err(err) => panic!("Error generating random ethereum keys in thread: {}", err)
-                            };
+        Self::validate_prefix_hex(&prefix_string).and_then(|_| {
+            let pool = threadpool::Builder::new().build();
+            let (tx, rx) = mpsc::sync_channel(1);
+            for _ in 0..pool.max_count() {
+                let prefix = Arc::clone(&prefix_arc);
+                let tx = tx.clone();
+                pool.execute(move || loop {
+                    match Self::new_random_address() {
+                        Ok(eth_keys) => {
+                            if !eth_keys.address_starts_with(&prefix) {
+                                continue;
+                            }
+                            tx.send(eth_keys)
+                                .expect("Error sending generted keys from thread!")
                         }
-                    });
-                };
-                Ok(rx.recv()?)
-            })
+                        Err(err) => {
+                            panic!("Error generating random ethereum keys in thread: {}", err)
+                        }
+                    };
+                });
+            }
+            Ok(rx.recv()?)
+        })
     }
 }
 
