@@ -6,7 +6,8 @@ pub const USAGE_INFO: &str = "
 
 ❍ Info ❍
 
-A simple CLI for creating vanity ethereum addresses (I.E. Those that begin with a desired hex string). You can also create random addresses too.
+A simple CLI for creating vanity ethereum addresses (I.E. Those that begin with a desired hex
+string). You can also create random addresses too!
 
 ❍ Usage ❍
 
@@ -19,13 +20,14 @@ Commands:
 
         version                ❍ Show version info.
         generateRandomAddress  ❍ Generate a random ethereum address.
-        generateVanityAddress  ❍ Generate a vanity etheruem address that starts with the provided hex prefix.
+        generateVanityAddress  ❍ Generate a vanity etheruem address that starts with the provided
+                                 hex prefix.
         <prefix>               ❍ Valid hex you want as a prefix for your vanity ethereum address.
 
 Options:
 
         --help                 ❍ Show this message.
-        --logLevel=<level>     ❍ Define the level of logging in the tool's output as one of: `none`, `info`, `debug`, `trace`
-                                 or `error`. [default: none]
+        --logLevel=<level>     ❍ Define the level of logging in the tool's output as one of:
+                                 `none`, `info`, `debug`, `trace` or `error`. [default: none]
 
 ";
