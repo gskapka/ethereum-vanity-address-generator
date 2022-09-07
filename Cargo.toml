@@ -1,6 +1,6 @@
 [package]
 name = "ethereum-vanity-address-generator"
-version = "1.0.0"
+version = "1.1.0"
 authors = ["Greg Kapka <greg@kapka.co.uk>"]
 
 [dependencies]

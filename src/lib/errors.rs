@@ -13,7 +13,6 @@ impl fmt::Display for AppError {
             AppError::Custom(ref msg) => msg.to_string(),
             AppError::RecvError(ref e) => format!("✘ Recv error: {}", e),
             AppError::CryptoError(ref e) => format!("✘ Crypto Error: {}", e),
-
         };
         f.write_fmt(format_args!("{}", msg))
     }
