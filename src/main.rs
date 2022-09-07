@@ -12,7 +12,6 @@ extern crate ethereum_types;
 
 mod lib;
 
-use serde_json::json;
 use crate::lib::{
     types::Result,
     errors::AppError,
@@ -54,7 +53,7 @@ pub fn main() -> Result<()> {
                 Ok(())
             },
             Err(err) => {
-                println!("{}", json!({"error": err.to_string()}).to_string());
+                println!("{}", err);
                 std::process::exit(1);
             }
         }
